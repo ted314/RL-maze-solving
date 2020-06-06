@@ -1,0 +1,6 @@
+Main idea: The problem is modeled as a MRP, the reward of the exit is 1(others are 0). Then we do the policy evaluation based on Bellman 
+Equation, and update the policy by dynamic-planning algorithm. After each iteration, we generate an action-space and let the agent try to 
+walk, see if it can get to the exit.
+
+Details:
+The state-space only contains the grid that the agent can walk on
