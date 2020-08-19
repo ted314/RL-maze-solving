@@ -103,6 +103,19 @@ def policy_update(states,actions,reward):
 		
 	return actions
 
+def random_update(states,actions,reward):
+	j=0
+	for (x,y) in states:
+		reward_space=[reward[x-1,y],reward[x,y+1],reward[x+1,y],reward[x,y-1]]
+		choi=reward_space.index(choice(reward_space))     #随机选择一个为自己的action
+		for i in range(4):
+			if i==choi:
+				actions[j][i]=1
+			else:
+				actions[j][i]=0
+		j+=1
+	return actions
+
 #先生成actions_space，再根据它来行动
 #路径存储在一个列表中，每次append的时候检查是否重复（在重复点施加惩罚）
 #若走出迷宫，返回路径
