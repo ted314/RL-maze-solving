@@ -1,12 +1,10 @@
-#进度记录(6-1)：改变迭代次数，或update时只选择最好的那个方案，会陷入局部最优或者局部循环
-#暂定解决思路：每次走不通的时候添加惩罚
+from random import randint, choice
+from enum import Enum
 import numpy as np 
 import matplotlib.pyplot as plt 
-from PIL import Image
-import time
 
 #生成11x15的迷宫
-maze=np.array([[-1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+maze=np.mat([[-1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
 	[-1,1,1,1,1,1,1,1,1,1,-1],
 	[-1,1,-1,-1,-1,1,-1,-1,1,-1,-1],
 	[-1,1,-1,-1,-1,-1,-1,-1,1,1,-1],
@@ -23,8 +21,6 @@ maze=np.array([[-1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
 	[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
 	])
 
-#reward=np.array([-10,0,-10,-10,-10],[-10,0,-10,0,-10],
-#	[-10,0,-10,0,-10],[-10,0,0,0,10],[-10,-10,-10,-10,-10])
 start=(0,1)
 out=(13,10)
 gamma=0.2  #折扣因子，控制奖励延时
@@ -36,15 +32,15 @@ rows,cols=maze.shape
 #得到可行状态后，返回状态转移概率 with action
 def get_p(x,y):
 	up=right=down=left=0
-	if maze[x-1][y]>0 and x>0:
+	if maze[x-1,y]>0 and x>0:
 		up=1
 	if y<(cols-1):
-		if maze[x][y+1]>0:
+		if maze[x,y+1]>0:
 			right=1
 	if x<(rows-1):
-		if maze[x+1][y]>0:
+		if maze[x+1,y]>0:
 			down=1
-	if maze[x][y-1]>0 and y>0:
+	if maze[x,y-1]>0 and y>0:
 		left=1
 	p=1/(up+right+down+left)
 	ans=[up,right,down,left]
@@ -55,7 +51,7 @@ def get_p(x,y):
 
 #输入迷宫，得到所有可行状态、每一个状态可以采取的动作、初始奖励
 #states、actions都用线性表储存，reward用矩阵
-def get_env(maze):
+def get_env(maze,out):
 	states=[]
 	actions=[]
 	reward=np.mat(np.zeros((rows+1,cols+1)))   #多一行一列，防止索引溢出
@@ -66,7 +62,10 @@ def get_env(maze):
 				actions.append(get_p(x,y))
 				if (x,y)==out:
 					reward[x,y]=1
-	return states,actions,reward
+	start=choice(states)
+	while start==out:
+		start=choice(states)
+	return start,states,actions,reward
 
 #输入所有的状态以及其对应的动作，得到每个状态的奖励
 #num:迭代次数
@@ -93,7 +92,7 @@ def policy_update(states,actions,reward):
 				actions[j][i]=reward_space[i]/add
 		j+=1
 		"""
-		choice=reward_space.index(max(reward_space))        #没有考虑两个方向值相等的情况
+		choice=reward_space.index(max(reward_space))     #贪心选择奖励最大的，没有考虑两个方向值相等的情况
 		for i in range(4):
 			if i==choice:
 				actions[j][i]=1
@@ -107,7 +106,11 @@ def random_update(states,actions,reward):
 	j=0
 	for (x,y) in states:
 		reward_space=[reward[x-1,y],reward[x,y+1],reward[x+1,y],reward[x,y-1]]
-		choi=reward_space.index(choice(reward_space))     #随机选择一个为自己的action
+		choi_space=[]
+		for re in reward_space:
+			if re!=0:
+				choi_space.append(re)
+		choi=reward_space.index(choice(choi_space))     #随机选择一个为自己的action
 		for i in range(4):
 			if i==choi:
 				actions[j][i]=1
@@ -166,17 +169,29 @@ def display(maze,states,solution,reward,actions):
 	plt.matshow(maze,cmap='CMRmap')
 	plt.title('Orignal Maze')
 	for (x,y) in solution:
-		maze[x][y]=0.5
+		maze[x,y]=0.5
 	plt.matshow(maze,cmap='CMRmap')
 	plt.title('Solved Maze')
 	for i in range(5):
 		reward=policy_eval(states,actions,reward)
 		actions=policy_update(states,actions,reward)
-		print(reward[2,1])
 	plt.matshow(reward,cmap='Blues')
 	plt.title('Reward')
 
-s,a,r=get_env(maze)
+start,s,a,r=get_env(maze,out)
+for i in range(60):
+	r=policy_eval(s,a,r)
+	if i%2==0:
+		a=random_update(s,a,r)
+	else:
+		a=policy_update(s,a,r)
+r,act,solu,tag=walk(start,maze,s,a,r)
+plt.matshow(act,cmap='CMRmap')
+plt.title('Action-Space')
+plt.matshow(r,cmap='Blues')
+plt.title('Reward')
+
+"""
 counter=0
 tag=0
 while tag==0 and counter<50:
@@ -188,3 +203,4 @@ plt.matshow(act,cmap='CMRmap')
 plt.title('Action-Space')
 print("迷宫已解，共尝试： %s 次" %counter)
 display(maze,s,solu,r,a)
+"""
